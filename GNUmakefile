@@ -62,8 +62,8 @@ IS_PPC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'ppc|po
 IS_PPC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'ppc64|powerpc64|power64')
 IS_SPARC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'sun|sparc')
 IS_SPARC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'sun|sparc64')
-IS_ARM32 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'arm|armhf|arm7l|eabihf|arm8l')
-IS_ARMV8 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'aarch32|aarch64|arm64|armv8')
+IS_ARM32 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'arm|armhf|armv7|eabihf|armv8')
+IS_ARMV8 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'aarch32|aarch64|arm64')
 
 # Attempt to determine platform
 SYSTEMX := $(shell $(CXX) $(CXXFLAGS) -dumpmachine 2>/dev/null)
@@ -292,7 +292,6 @@ ifeq ($(DETECT_FEATURES),1)
     CHAM_FLAG = $(SSSE3_FLAG)
     KECCAK_FLAG = $(SSSE3_FLAG)
     LEA_FLAG = $(SSSE3_FLAG)
-    SIMECK_FLAG = $(SSSE3_FLAG)
     SIMON128_FLAG = $(SSSE3_FLAG)
     SPECK128_FLAG = $(SSSE3_FLAG)
     SUN_LDFLAGS += $(SSSE3_FLAG)
@@ -306,8 +305,6 @@ ifeq ($(DETECT_FEATURES),1)
   ifeq ($(strip $(HAVE_OPT)),0)
     BLAKE2B_FLAG = $(SSE41_FLAG)
     BLAKE2S_FLAG = $(SSE41_FLAG)
-    SIMON64_FLAG = $(SSE41_FLAG)
-    SPECK64_FLAG = $(SSE41_FLAG)
     SUN_LDFLAGS += $(SSE41_FLAG)
   else
     SSE41_FLAG =
@@ -478,10 +475,7 @@ ifeq ($(DETECT_FEATURES),1)
     CHAM_FLAG = -march=armv7-a -mfpu=neon
     LEA_FLAG = -march=armv7-a -mfpu=neon
     SHA_FLAG = -march=armv7-a -mfpu=neon
-    SIMECK_FLAG = -march=armv7-a -mfpu=neon
-    SIMON64_FLAG = -march=armv7-a -mfpu=neon
     SIMON128_FLAG = -march=armv7-a -mfpu=neon
-    SPECK64_FLAG = -march=armv7-a -mfpu=neon
     SPECK128_FLAG = -march=armv7-a -mfpu=neon
     SM4_FLAG = -march=armv7-a -mfpu=neon
   else
@@ -521,10 +515,7 @@ ifeq ($(DETECT_FEATURES),1)
     CHAM_FLAG = -march=armv8-a
     LEA_FLAG = -march=armv8-a
     NEON_FLAG = -march=armv8-a
-    SIMECK_FLAG = -march=armv8-a
-    SIMON64_FLAG = -march=armv8-a
     SIMON128_FLAG = -march=armv8-a
-    SPECK64_FLAG = -march=armv8-a
     SPECK128_FLAG = -march=armv8-a
     SM4_FLAG = -march=armv8-a
   else
@@ -658,7 +649,6 @@ ifeq ($(DETECT_FEATURES),1)
     LEA_FLAG = $(POWER8_FLAG)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
-    SIMECK_FLAG = $(POWER8_FLAG)
   else
     POWER8_FLAG =
   endif
@@ -724,8 +714,6 @@ ifeq ($(DETECT_FEATURES),1)
   ifneq ($(ALTIVEC_FLAG),)
     BLAKE2S_FLAG = $(ALTIVEC_FLAG)
     CHACHA_FLAG = $(ALTIVEC_FLAG)
-    SIMON64_FLAG = $(ALTIVEC_FLAG)
-    SPECK64_FLAG = $(ALTIVEC_FLAG)
     SPECK128_FLAG = $(ALTIVEC_FLAG)
     SIMON128_FLAG = $(ALTIVEC_FLAG)
   endif
@@ -1111,11 +1099,11 @@ endif
 # Also see https://www.cryptopp.com/wiki/Cryptogams.
 ifeq ($(IS_ARM32)$(IS_LINUX),11)
   ifeq ($(CLANG_COMPILER),1)
-    CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV7_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
   else
-    CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV7_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
   endif
   SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
 endif
@@ -1281,7 +1269,7 @@ autotools-clean:
 	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
 	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
 	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*
-	@-$(RM) -rf m4/ auto*.cache/ .deps/ .libs/
+	@-$(RM) -rf build-aux/ m4/ auto*.cache/ .deps/ .libs/
 
 .PHONY: cmake-clean
 cmake-clean:
@@ -1511,7 +1499,7 @@ endif # Dependencies
 
 # Cryptogams ARM asm implementation. AES needs -mthumb for Clang
 aes_armv4.o : aes_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_THUMB_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_THUMB_FLAG) -c) $<
 
 # SSSE3 or NEON available
 aria_simd.o : aria_simd.cpp
@@ -1595,15 +1583,15 @@ sha_simd.o : sha_simd.cpp
 
 # Cryptogams SHA1 asm implementation.
 sha1_armv4.o : sha1_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA256 asm implementation.
 sha256_armv4.o : sha256_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA512 asm implementation.
 sha512_armv4.o : sha512_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 sha3_simd.o : sha3_simd.cpp
 	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SHA3_FLAG) -c) $<
@@ -1612,21 +1600,9 @@ sha3_simd.o : sha3_simd.cpp
 shacal2_simd.o : shacal2_simd.cpp
 	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SHA_FLAG) -c) $<
 
-# SSSE3 or NEON available
-simeck_simd.o : simeck_simd.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SIMECK_FLAG) -c) $<
-
-# SSE4.1, NEON or POWER7 available
-simon64_simd.o : simon64_simd.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SIMON64_FLAG) -c) $<
-
 # SSSE3, NEON or POWER8 available
 simon128_simd.o : simon128_simd.cpp
 	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SIMON128_FLAG) -c) $<
-
-# SSE4.1, NEON or POWER7 available
-speck64_simd.o : speck64_simd.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(SPECK64_FLAG) -c) $<
 
 # SSSE3, NEON or POWER8 available
 speck128_simd.o : speck128_simd.cpp

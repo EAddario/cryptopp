@@ -241,7 +241,6 @@ ifeq ($(DETECT_FEATURES),1)
     ARIA_FLAG = $(SSSE3_FLAG)
     CHAM_FLAG = $(SSSE3_FLAG)
     LEA_FLAG = $(SSSE3_FLAG)
-    SIMECK_FLAG = $(SSSE3_FLAG)
     SIMON128_FLAG = $(SSSE3_FLAG)
     SPECK128_FLAG = $(SSSE3_FLAG)
   else
@@ -254,8 +253,6 @@ ifeq ($(DETECT_FEATURES),1)
   ifeq ($(strip $(HAVE_OPT)),0)
     BLAKE2B_FLAG = $(SSE41_FLAG)
     BLAKE2S_FLAG = $(SSE41_FLAG)
-    SIMON64_FLAG = $(SSE41_FLAG)
-    SPECK64_FLAG = $(SSE41_FLAG)
   else
     SSE41_FLAG =
   endif
@@ -400,10 +397,7 @@ ifeq ($(DETECT_FEATURES),1)
     CHAM_FLAG = $(NEON_FLAG)
     LEA_FLAG = $(NEON_FLAG)
     SHA_FLAG = $(NEON_FLAG)
-    SIMECK_FLAG = $(NEON_FLAG)
-    SIMON64_FLAG = $(NEON_FLAG)
     SIMON128_FLAG = $(NEON_FLAG)
-    SPECK64_FLAG = $(NEON_FLAG)
     SPECK128_FLAG = $(NEON_FLAG)
     SM4_FLAG = $(NEON_FLAG)
   else
@@ -457,10 +451,7 @@ ifeq ($(DETECT_FEATURES),1)
     CHAM_FLAG = $(ASIMD_FLAG)
     LEA_FLAG = $(ASIMD_FLAG)
     NEON_FLAG = $(ASIMD_FLAG)
-    SIMECK_FLAG = $(ASIMD_FLAG)
-    SIMON64_FLAG = $(ASIMD_FLAG)
     SIMON128_FLAG = $(ASIMD_FLAG)
-    SPECK64_FLAG = $(ASIMD_FLAG)
     SPECK128_FLAG = $(ASIMD_FLAG)
     SM4_FLAG = $(ASIMD_FLAG)
   else
@@ -622,11 +613,11 @@ INCL := $(filter-out resource.h,$(sort $(wildcard *.h)))
 # Also see https://www.cryptopp.com/wiki/Cryptogams.
 ifeq ($(IS_ARM32)$(IS_LINUX),11)
   ifeq ($(CLANG_COMPILER),1)
-    CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV7_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
   else
-    CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV7_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
   endif
   SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
 endif
@@ -720,7 +711,7 @@ autotools-clean:
 	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
 	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
 	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*
-	@-$(RM) -rf m4/ auto*.cache/ .deps/ .libs/
+	@-$(RM) -rf build-aux/ m4/ auto*.cache/ .deps/ .libs/
 
 .PHONY: cmake-clean
 cmake-clean:
@@ -850,7 +841,7 @@ endif # Dependencies
 
 # Cryptogams ARM asm implementation. AES needs -mthumb for Clang
 aes_armv4.o : aes_armv4.S
-	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_THUMB_FLAG) -c) $<
+	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_THUMB_FLAG) -c) $<
 
 # Use C++ compiler on C source after patching.
 # https://github.com/weidai11/cryptopp/issues/926
@@ -919,35 +910,23 @@ sha_simd.o : sha_simd.cpp
 
 # Cryptogams SHA1 asm implementation.
 sha1_armv4.o : sha1_armv4.S
-	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA256 asm implementation.
 sha256_armv4.o : sha256_armv4.S
-	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA512 asm implementation.
 sha512_armv4.o : sha512_armv4.S
-	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_FLAG) -c) $<
+	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # SSE4.2/SHA-NI or ARMv8a available
 shacal2_simd.o : shacal2_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(SHA_FLAG) -c) $<
 
-# SSSE3 or NEON available
-simeck_simd.o : simeck_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(SIMECK_FLAG) -c) $<
-
-# SSE4.1, NEON or POWER7 available
-simon64_simd.o : simon64_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(SIMON64_FLAG) -c) $<
-
 # SSSE3, NEON or POWER8 available
 simon128_simd.o : simon128_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(SIMON128_FLAG) -c) $<
-
-# SSE4.1, NEON or POWER7 available
-speck64_simd.o : speck64_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(SPECK64_FLAG) -c) $<
 
 # SSSE3, NEON or POWER8 available
 speck128_simd.o : speck128_simd.cpp
